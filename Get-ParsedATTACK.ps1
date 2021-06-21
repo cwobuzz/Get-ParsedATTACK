@@ -12,9 +12,9 @@ Function Get-ParsedATTACK
  
 .EXAMPLE 
     PS C:\>$AttackData = Get-ParsedATTACK -Uri https://attack.mitre.org/groups/G0016/
-    PS C:\>$AttackData 
+    PS C:\>$AttackData  | Export-Csv -NoTypeInformation -Delimiter "`t" -Path C:\Users\User\Desktop\TabbedAttack.csv
 .Notes 
-LastModified: 6/17/2021
+LastModified: 6/21/2021
 Author:       Travis Anderson 
               Matthew Kress-Weitenhagen
 #>
@@ -24,9 +24,6 @@ Param(
     [uri]
     $Uri
 )               
-
-#$WebRequest = (Invoke-WebRequest -Uri https://attack.mitre.org/groups/G0016/)
-
 
 ## Extract the tables out of the web request
 $tables = @($WebRequest.ParsedHtml.getElementsByTagName("TABLE"))
@@ -38,7 +35,7 @@ $Return = New-Object 'System.Collections.Generic.List[System.Object]'
 
 foreach($line in $tables)
     {
-        $lineObject = New-Object PSCustomObject 
+
         #Regex for each type of Domain
         [regex]$DomainwithSub = "^(?<Domain>\w+)\s(?<ID>\w+\s+.\d\d\d)\s(?<Name>\w+.*)"
         [regex]$DomainNoSub = "^(?<Domain>\w+)\s(?<ID>\w+)\s(?<Name>\w+.*)"
@@ -48,27 +45,34 @@ foreach($line in $tables)
         {
             $DomainwithSub
             {
-                $lineObject | Add-Member -MemberType NoteProperty -Name Domain -Value $Matches.Domain
-                $lineObject | Add-Member -MemberType NoteProperty -Name ID -Value $Matches.ID 
-                $lineObject | Add-Member -MemberType NoteProperty -Name Name -Value $Matches.Name
+                [PSCustomObject]@{
+                    Domain = $Matches.Domain
+                    ID = $Matches.ID
+                    Name = $Matches.Name
+                        } 
             }
             $DomainNoSub
             {
-                $lineObject | Add-Member -MemberType NoteProperty -Name Domain -Value $Matches.Domain
-                $lineObject | Add-Member -MemberType NoteProperty -Name ID -Value $Matches.ID 
-                $lineObject | Add-Member -MemberType NoteProperty -Name Name -Value $Matches.Name
+                [PSCustomObject]@{
+                    Domain = $Matches.Domain
+                    ID = $Matches.ID
+                    Name = $Matches.Name
+                        }
             }
             $JustSubID
             {
                 $SubID = $Matches.SubID
                 $Name = $Matches.Name
-                $lineObject | Add-Member -MemberType NoteProperty -Name Domain -Value $Return[-1].Domain
-                $lineObject | Add-Member -MemberType NoteProperty -Name ID -Value $(if ($Return[-1].ID -match "."){$(($Return[-1].ID -split " ")[0] + " " +  $SubID) } else {$($Return[-1].ID + " " + $SubID) })
-                $lineObject | Add-Member -MemberType NoteProperty -Name Name -Value $Name
+                 [PSCustomObject]@{
+                    Domain = $Return[-1].Domain
+                    ID = $(if ($Return[-1].ID -match "."){$(($Return[-1].ID -split " ")[0] + " " +  $SubID) } else {$($Return[-1].ID + " " + $SubID) })
+                    Name = $Name
+                        }
             }
             Default {  }
         }
-        $Return.Add($lineObject)
+
     } #End Foreach
-    return $Return
+
 } #End Function
+
