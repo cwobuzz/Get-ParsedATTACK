@@ -25,15 +25,15 @@ Param(
     $Uri
 )               
 
+$WebRequest = Invoke-WebRequest -Uri $Uri
 ## Extract the tables out of the web request
 $tables = @($WebRequest.ParsedHtml.getElementsByTagName("TABLE"))
 $tables = ($tables | where innertext -Match DomainIDNameUse).InnerText -split "`n"
 
 
 ## Go through all of the rows in the table
-$Return = New-Object 'System.Collections.Generic.List[System.Object]'
-
-foreach($line in $tables)
+$return = $null
+ $return = foreach($line in $tables)
     {
 
         #Regex for each type of Domain
@@ -61,18 +61,34 @@ foreach($line in $tables)
             }
             $JustSubID
             {
-                $SubID = $Matches.SubID
-                $Name = $Matches.Name
                  [PSCustomObject]@{
-                    Domain = $Return[-1].Domain
-                    ID = $(if ($Return[-1].ID -match "."){$(($Return[-1].ID -split " ")[0] + " " +  $SubID) } else {$($Return[-1].ID + " " + $SubID) })
-                    Name = $Name
+                    Domain = $Matches.Domain
+                    ID = $Matches.SubID
+                    Name = $Matches.Name
                         }
             }
             Default {  }
         }
 
     } #End Foreach
+    # Counter
+    $counter = 0
 
+    #New foreach cannot figure out how to use PSCustomObject[-1]
+    foreach ($obj in $Return) {
+        if ($obj.Domain -eq $null ) {
+            $obj.Domain = $Return[$counter - 1].Domain
+            if ($obj.ID -match "^\.") {
+                $obj.ID = $($Return[$counter -1 ].ID).split(" ")[0] + " " + $obj.ID}
+            $counter ++
+
+        }
+        else {
+            #continue
+            $counter ++
+        }
+        
+    } # End Foreach
+$return
 } #End Function
 
